@@ -39,7 +39,6 @@ impl ModbusClient {
     pub fn read(&mut self, register: u16, count: u16) -> Result<Vec<u16>, Box<dyn Error>> {
         match &mut self.context {
             Some(ctx) => {
-                let retval: Vec<u16>;
                 let rsp;
                 if register >= 30000 && register < 40000 {
                     rsp = ctx.read_input_registers(register - 30001, count)?;
@@ -49,8 +48,7 @@ impl ModbusClient {
                     return Err("Register outside valid register range...")?;
                 }
 
-                retval = rsp?;
-                Ok(retval)
+                Ok(rsp)
             }
             None => Err("No context set for self. Did you forget to connect?")?,
         }
