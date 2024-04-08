@@ -2,6 +2,7 @@ use std::error::Error;
 use std::io;
 use std::time;
 use tokio_modbus::client::sync::Reader;
+use tokio_modbus::client::sync::Writer;
 use tokio_modbus::{client::sync, Slave};
 use tokio_serial;
 
@@ -52,5 +53,22 @@ impl ModbusClient {
             }
             None => Err("No context set for self. Did you forget to connect?")?,
         }
+    }
+
+    pub fn write(&mut self, register: u16, data: Vec<u16>) -> Result<(), Box<dyn Error>> {
+        match &mut self.context {
+            Some(ctx) => {
+                let rsp;
+                if register > 40001 && register < 50000 {
+                    rsp = ctx.write_multiple_registers(register - 40001, &data)?;
+                } else {
+                    return Err("Register outside valid register range...")?;
+                }
+                return Ok(rsp);
+            }
+            None => Err("No context set for self. Did you forget to connect?")?,
+        }
+
+        Ok(())
     }
 }
