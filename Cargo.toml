@@ -1,5 +1,5 @@
 [package]
-name = "modbus-util"
+name = "comm-util"
 version = "0.1.0"
 edition = "2021"
 
