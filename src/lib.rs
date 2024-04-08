@@ -6,69 +6,73 @@ use tokio_modbus::client::sync::Writer;
 use tokio_modbus::{client::sync, Slave};
 use tokio_serial;
 
-const CONNECTION_TIMEOUT: u64 = 500;
+pub mod modbus {
+    use super::*;
 
-pub struct ModbusClient {
-    builder: tokio_serial::SerialPortBuilder,
-    context: Option<sync::Context>,
-}
+    const CONNECTION_TIMEOUT: u64 = 500;
 
-impl ModbusClient {
-    pub fn new(com_port: String, baudrate: u32) -> ModbusClient {
-        let builder: tokio_serial::SerialPortBuilder = tokio_serial::new(com_port, baudrate);
-
-        ModbusClient {
-            builder,
-            context: None,
-        }
+    pub struct Client {
+        builder: tokio_serial::SerialPortBuilder,
+        context: Option<sync::Context>,
     }
 
-    pub fn connect(&mut self) -> Result<(), io::Error> {
-        match sync::rtu::connect_slave_with_timeout(
-            &self.builder,
-            Slave(0x01),
-            Some(time::Duration::from_millis(CONNECTION_TIMEOUT)),
-        ) {
-            Ok(ctx) => {
-                self.context = Some(ctx);
-                Ok(())
+    impl Client {
+        pub fn new(com_port: String, baudrate: u32) -> Client {
+            let builder: tokio_serial::SerialPortBuilder = tokio_serial::new(com_port, baudrate);
+
+            Client {
+                builder,
+                context: None,
             }
-            Err(e) => Err(e),
         }
-    }
 
-    pub fn read(&mut self, register: u16, count: u16) -> Result<Vec<u16>, Box<dyn Error>> {
-        match &mut self.context {
-            Some(ctx) => {
-                let rsp;
-                if register >= 30000 && register < 40000 {
-                    rsp = ctx.read_input_registers(register - 30001, count)?;
-                } else if register >= 40000 && register < 50000 {
-                    rsp = ctx.read_holding_registers(register - 40001, count)?;
-                } else {
-                    return Err("Register outside valid register range...")?;
+        pub fn connect(&mut self) -> Result<(), io::Error> {
+            match sync::rtu::connect_slave_with_timeout(
+                &self.builder,
+                Slave(0x01),
+                Some(time::Duration::from_millis(CONNECTION_TIMEOUT)),
+            ) {
+                Ok(ctx) => {
+                    self.context = Some(ctx);
+                    Ok(())
                 }
-
-                Ok(rsp)
+                Err(e) => Err(e),
             }
-            None => Err("No context set for self. Did you forget to connect?")?,
         }
-    }
 
-    pub fn write(&mut self, register: u16, data: Vec<u16>) -> Result<(), Box<dyn Error>> {
-        match &mut self.context {
-            Some(ctx) => {
-                let rsp;
-                if register > 40001 && register < 50000 {
-                    rsp = ctx.write_multiple_registers(register - 40001, &data)?;
-                } else {
-                    return Err("Register outside valid register range...")?;
+        pub fn read(&mut self, register: u16, count: u16) -> Result<Vec<u16>, Box<dyn Error>> {
+            match &mut self.context {
+                Some(ctx) => {
+                    let rsp;
+                    if register >= 30000 && register < 40000 {
+                        rsp = ctx.read_input_registers(register - 30001, count)?;
+                    } else if register >= 40000 && register < 50000 {
+                        rsp = ctx.read_holding_registers(register - 40001, count)?;
+                    } else {
+                        return Err("Register outside valid register range...")?;
+                    }
+
+                    Ok(rsp)
                 }
-                return Ok(rsp);
+                None => Err("No context set for self. Did you forget to connect?")?,
             }
-            None => Err("No context set for self. Did you forget to connect?")?,
         }
 
-        Ok(())
+        pub fn write(&mut self, register: u16, data: Vec<u16>) -> Result<(), Box<dyn Error>> {
+            match &mut self.context {
+                Some(ctx) => {
+                    let rsp;
+                    if register > 40001 && register < 50000 {
+                        rsp = ctx.write_multiple_registers(register - 40001, &data)?;
+                    } else {
+                        return Err("Register outside valid register range...")?;
+                    }
+                    return Ok(rsp);
+                }
+                None => Err("No context set for self. Did you forget to connect?")?,
+            }
+
+            Ok(())
+        }
     }
 }
