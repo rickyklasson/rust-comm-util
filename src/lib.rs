@@ -76,3 +76,19 @@ pub mod modbus {
         }
     }
 }
+
+pub mod serial {
+    pub fn get_serial_ports() -> Vec<String> {
+        match tokio_serial::available_ports() {
+            Ok(ports) => {
+                let mut retval: Vec<String> = Vec::new();
+
+                for p in ports {
+                    retval.push(p.port_name);
+                }
+                retval
+            }
+            Err(_) => vec![],
+        }
+    }
+}
