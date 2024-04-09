@@ -26,7 +26,7 @@ pub mod modbus {
             }
         }
 
-        pub fn connect(&mut self) -> Result<(), io::Error> {
+        pub fn open(&mut self) -> Result<(), io::Error> {
             match sync::rtu::connect_slave_with_timeout(
                 &self.builder,
                 Slave(0x01),
@@ -38,6 +38,10 @@ pub mod modbus {
                 }
                 Err(e) => Err(e),
             }
+        }
+
+        pub fn close(&mut self) -> () {
+            self.context = None;
         }
 
         pub fn read(&mut self, register: u16, count: u16) -> Result<Vec<u16>, Box<dyn Error>> {
