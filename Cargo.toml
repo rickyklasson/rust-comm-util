@@ -8,5 +8,5 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.5.3", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
-tokio-modbus = { version = "0.11.0", default-features = false, features = ["rtu-sync", "rtu"] }
+tokio-modbus = { version = "0.11.0", default-features = false, features = ["rtu-sync", "tcp-sync"] }
 tokio-serial = "5.4.1"

@@ -4,7 +4,6 @@ use std::time;
 use tokio_modbus::client::sync::Reader;
 use tokio_modbus::client::sync::Writer;
 use tokio_modbus::{client::sync, Slave};
-use tokio_serial;
 
 pub mod modbus {
     use super::*;
@@ -40,7 +39,7 @@ pub mod modbus {
             }
         }
 
-        pub fn close(&mut self) -> () {
+        pub fn close(&mut self) {
             self.context = None;
         }
 
@@ -48,9 +47,9 @@ pub mod modbus {
             match &mut self.context {
                 Some(ctx) => {
                     let rsp;
-                    if register >= 30000 && register < 40000 {
+                    if (30000..40000).contains(&register) {
                         rsp = ctx.read_input_registers(register - 30001, count)?;
-                    } else if register >= 40000 && register < 50000 {
+                    } else if (40000..50000).contains(&register) {
                         rsp = ctx.read_holding_registers(register - 40001, count)?;
                     } else {
                         return Err("Register outside valid register range...")?;
@@ -65,13 +64,11 @@ pub mod modbus {
         pub fn write(&mut self, register: u16, data: Vec<u16>) -> Result<(), Box<dyn Error>> {
             match &mut self.context {
                 Some(ctx) => {
-                    let rsp;
                     if register > 40001 && register < 50000 {
-                        rsp = ctx.write_multiple_registers(register - 40001, &data)?;
+                        ctx.write_multiple_registers(register - 40001, &data)?
                     } else {
-                        return Err("Register outside valid register range...")?;
+                        Err("Register outside valid register range...")?
                     }
-                    return Ok(rsp);
                 }
                 None => Err("No context set for self. Did you forget to connect?")?,
             }

@@ -28,7 +28,7 @@ fn main() {
     let args = Args::parse();
 
     let mut modbus_client = modbus::Client::new(args.com_port, args.baudrate);
-    if let Err(_) = modbus_client.connect() {
+    if modbus_client.open().is_err() {
         println!("Failed to connect to target, exiting..");
         return;
     }

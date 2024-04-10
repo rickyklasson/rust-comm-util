@@ -19,7 +19,7 @@ fn main() {
     let args = Args::parse();
 
     let mut modbus_client = modbus::Client::new(args.com_port, args.baudrate);
-    if let Err(_) = modbus_client.connect() {
+    if modbus_client.open().is_err() {
         println!("Failed to connect to target, exiting..");
         return;
     }
@@ -28,9 +28,9 @@ fn main() {
         let mut user_input: String = String::new();
         io::stdin().read_line(&mut user_input).unwrap();
 
-        let parts: Vec<&str> = user_input.trim().split(" ").collect();
+        let parts: Vec<&str> = user_input.trim().split(' ').collect();
 
-        if parts.len() == 0 || parts.len() > 2 {
+        if parts.is_empty() || parts.len() > 2 {
             println!("Please provied input on format: <MODBUS_REG> [VALUE]");
             continue;
         }
