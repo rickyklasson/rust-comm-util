@@ -1,18 +1,14 @@
 use std::error::Error;
-use std::io;
-use std::time;
-use tokio_modbus::client::sync::Reader;
-use tokio_modbus::client::sync::Writer;
-use tokio_modbus::{client::sync, Slave};
+use tokio_modbus::client::Reader;
+use tokio_modbus::client::Writer;
+use tokio_modbus::{client, Slave};
 
 pub mod modbus {
     use super::*;
 
-    const CONNECTION_TIMEOUT: u64 = 500;
-
     pub struct Client {
         builder: tokio_serial::SerialPortBuilder,
-        context: Option<sync::Context>,
+        context: Option<client::Context>,
     }
 
     impl Client {
@@ -25,14 +21,10 @@ pub mod modbus {
             }
         }
 
-        pub fn open(&mut self) -> Result<(), io::Error> {
-            match sync::rtu::connect_slave_with_timeout(
-                &self.builder,
-                Slave(0x01),
-                Some(time::Duration::from_millis(CONNECTION_TIMEOUT)),
-            ) {
-                Ok(ctx) => {
-                    self.context = Some(ctx);
+        pub fn open(&mut self) -> Result<(), tokio_serial::Error> {
+            match tokio_serial::SerialStream::open(&self.builder) {
+                Ok(stream) => {
+                    self.context = Some(client::rtu::attach_slave(stream, Slave(0x01)));
                     Ok(())
                 }
                 Err(e) => Err(e),
@@ -43,14 +35,18 @@ pub mod modbus {
             self.context = None;
         }
 
-        pub fn read(&mut self, register: u16, count: u16) -> Result<Vec<u16>, Box<dyn Error>> {
+        pub async fn read(
+            &mut self,
+            register: u16,
+            count: u16,
+        ) -> Result<Vec<u16>, Box<dyn Error>> {
             match &mut self.context {
                 Some(ctx) => {
                     let rsp;
                     if (30000..40000).contains(&register) {
-                        rsp = ctx.read_input_registers(register - 30001, count)?;
+                        rsp = ctx.read_input_registers(register - 30001, count).await?;
                     } else if (40000..50000).contains(&register) {
-                        rsp = ctx.read_holding_registers(register - 40001, count)?;
+                        rsp = ctx.read_holding_registers(register - 40001, count).await?;
                     } else {
                         return Err("Register outside valid register range...")?;
                     }
@@ -61,11 +57,12 @@ pub mod modbus {
             }
         }
 
-        pub fn write(&mut self, register: u16, data: Vec<u16>) -> Result<(), Box<dyn Error>> {
+        pub async fn write(&mut self, register: u16, data: Vec<u16>) -> Result<(), Box<dyn Error>> {
             match &mut self.context {
                 Some(ctx) => {
                     if register > 40001 && register < 50000 {
-                        ctx.write_multiple_registers(register - 40001, &data)?
+                        ctx.write_multiple_registers(register - 40001, &data)
+                            .await?
                     } else {
                         Err("Register outside valid register range...")?
                     }

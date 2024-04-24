@@ -675,7 +675,6 @@ dependencies = [
  "log",
  "smallvec",
  "tokio",
- "tokio-serial",
  "tokio-util",
 ]
 

@@ -25,6 +25,11 @@ struct Args {
 }
 
 fn main() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async_main());
+}
+
+async fn async_main() {
     let args = Args::parse();
 
     let mut modbus_client = modbus::Client::new(args.com_port, args.baudrate);
@@ -34,7 +39,7 @@ fn main() {
     }
 
     loop {
-        let response = modbus_client.read(args.modbus_nbr, 1);
+        let response = modbus_client.read(args.modbus_nbr, 1).await;
         match response {
             Ok(values) => {
                 println!("{}: {}", args.modbus_nbr, values[0]);

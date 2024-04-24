@@ -16,6 +16,11 @@ struct Args {
 }
 
 fn main() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async_main());
+}
+
+async fn async_main() {
     let args = Args::parse();
 
     let mut modbus_client = modbus::Client::new(args.com_port, args.baudrate);
@@ -38,7 +43,8 @@ fn main() {
         let register: u16 = parts[0].parse().unwrap();
         if parts.len() == 1 {
             // Single register given -> Read it.
-            let rsp = modbus_client.read(register, 1);
+
+            let rsp = modbus_client.read(register, 1).await;
             match rsp {
                 Ok(data) => {
                     println!("Read: {:?}", data[0]);
@@ -50,8 +56,7 @@ fn main() {
         } else if parts.len() == 2 {
             // Register and data given -> Write it.
             let data: u16 = parts[1].parse().unwrap();
-
-            let rsp = modbus_client.write(register, vec![data]);
+            let rsp = modbus_client.write(register, vec![data]).await;
             match rsp {
                 Ok(_) => {
                     println!("Wrote {data:?} to {register:?}");
