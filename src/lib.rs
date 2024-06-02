@@ -15,7 +15,7 @@ pub mod modbus {
     }
 
     impl Client {
-        pub fn new(com_port: String, baudrate: u32) -> Client {
+        pub fn new(com_port: &String, baudrate: u32) -> Client {
             let builder: tokio_serial::SerialPortBuilder = tokio_serial::new(com_port, baudrate);
 
             Client {
