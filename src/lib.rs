@@ -1,36 +1,66 @@
 use std::error::Error;
+use std::net;
 use tokio::time;
 use tokio_modbus::client::Reader;
 use tokio_modbus::client::Writer;
 use tokio_modbus::{client, Slave};
 
 pub mod modbus {
+    use std::str::FromStr;
+
     use super::*;
 
     const TIMEOUT: time::Duration = time::Duration::from_millis(250);
 
+    pub enum ModbusClientType {
+        Rtu(tokio_serial::SerialPortBuilder),
+        Tcp(std::net::SocketAddr),
+    }
+
     pub struct Client {
-        builder: tokio_serial::SerialPortBuilder,
+        client_type: ModbusClientType,
         context: Option<client::Context>,
     }
 
     impl Client {
-        pub fn new(com_port: &String, baudrate: u32) -> Client {
-            let builder: tokio_serial::SerialPortBuilder = tokio_serial::new(com_port, baudrate);
+        pub fn new(com_port: &String, baudrate: u32, ip: &String) -> Client {
+            if !com_port.is_empty() {
+                // Serial port client request
+                let builder: tokio_serial::SerialPortBuilder =
+                    tokio_serial::new(com_port, baudrate);
 
-            Client {
-                builder,
-                context: None,
+                Client {
+                    client_type: ModbusClientType::Rtu(builder),
+                    context: None,
+                }
+            } else {
+                // TCP client request
+                let ipv4_addr = match net::IpAddr::from_str(ip) {
+                    Ok(val) => val,
+                    Err(_) => net::IpAddr::from_str("0.0.0.0").unwrap(),
+                };
+                let socket_addr = net::SocketAddr::new(ipv4_addr, 502);
+
+                Client {
+                    client_type: ModbusClientType::Tcp(socket_addr),
+                    context: None,
+                }
             }
         }
 
-        pub fn open(&mut self) -> Result<(), tokio_serial::Error> {
-            match tokio_serial::SerialStream::open(&self.builder) {
-                Ok(stream) => {
-                    self.context = Some(client::rtu::attach_slave(stream, Slave(0x01)));
+        pub async fn open(&mut self) -> Result<(), tokio_serial::Error> {
+            match &self.client_type {
+                ModbusClientType::Rtu(builder) => match tokio_serial::SerialStream::open(builder) {
+                    Ok(stream) => {
+                        self.context = Some(client::rtu::attach_slave(stream, Slave(0x01)));
+                        Ok(())
+                    }
+                    Err(e) => Err(e),
+                },
+                ModbusClientType::Tcp(socket_addr) => {
+                    self.context = Some(client::tcp::connect(*socket_addr).await?);
                     Ok(())
                 }
-                Err(e) => Err(e),
             }
         }
 
